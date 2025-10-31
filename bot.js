@@ -247,9 +247,9 @@ client.on('interactionCreate', async (interaction) => {
         // Sprawdź czy plik istnieje
         if (!fs.existsSync(exePath)) {
           return await interaction.editReply({
-            content: '❌ **Błąd serwera**\n\n' +
-                     'Plik MsiUtility_v3.exe nie został znaleziony na serwerze.\n' +
-                     'Skontaktuj się z administratorem.',
+            content: '❌ **Server error**\n\n' +
+                     'The file MsiUtility_v3.exe was not found on the server..\n' +
+                     'Contact the administrator.',
           });
         }
 
@@ -262,21 +262,21 @@ client.on('interactionCreate', async (interaction) => {
 
         // Wyślij link do pobrania
         await interaction.editReply({
-          content: `🎉 **Twój MsiUtility_v3.exe jest gotowy!**\n\n` +
-                   `✅ Wygenerowano dla: **${username}**\n` +
-                   `🔑 User ID: \`${userId}\`\n` +
-                   `📦 Rozmiar: ${fileSizeMB} MB\n\n` +
-                   `**📥 POBIERZ PROGRAM:**\n` +
-                   `🔗 [Kliknij tutaj aby pobrać MsiUtility_v3.exe](${downloadUrl})\n\n` +
-                   `**JAK UŻYWAĆ:**\n` +
-                   `1️⃣ Kliknij link powyżej i pobierz plik\n` +
-                   `2️⃣ Umieść w wybranym folderze\n` +
-                   `3️⃣ Wpisz \`/load\` aby aktywować sesję\n` +
-                   `4️⃣ Uruchom **MsiUtility_v3.exe**\n` +
-                   `5️⃣ Wpisz \`/unload\` gdy skończysz\n\n` +
-                   `⚠️ **Ten program działa TYLKO dla Twojego konta Discord!**\n` +
-                   `🔒 Bez aktywnej sesji (/load) program się nie uruchomi\n\n` +
-                   `🔐 Twój unikalny klucz: \`${userId.substring(0, 16)}...\``,
+          content: `🎉 **Your MsiUtility_v3.exe is ready!**\n\n` +
+                   ` Generated for: petsetv3: **${username}**\n` +
+                   ` User ID: \`${userId}\`\n` +
+                   ` Size: ${fileSizeMB} MB\n\n` +
+                   `**📥 DOWNLOAD THE PROGRAM::**\n` +
+                   `🔗 [Click here to download MsiUtility_v3.exe](${downloadUrl})\n\n` +
+                   `**HOW TO USE:**\n` +
+                   `1. Click the link above and download the file\n` +
+                   `2. Place it in a folder of your choice\n` +
+                   `3. Type /load to activate the session\n` +
+                   `4. Run MsiUtility_v3.exe**\n` +
+                   `5. Type /unload when you’re finished\n\n` +
+                   `! **This program works ONLY for your Discord account!**\n` +
+                   `! The program will not run without an active session (/load)\n\n` +
+                   `! Your unique key: \`${userId.substring(0, 16)}...\``,
         });
 
         console.log(`🔥 [DOWNLOAD] ${username} (${userId}) otrzymał link do pobrania`);
@@ -284,7 +284,7 @@ client.on('interactionCreate', async (interaction) => {
       } catch (error) {
         console.error('Błąd generowania linku:', error);
         await interaction.editReply({
-          content: '❌ Błąd podczas generowania linku do pobrania. Spróbuj ponownie.',
+          content: '❌ Error while generating the download link. Please try again.',
         });
       }
     }
@@ -302,10 +302,10 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       await interaction.reply({
-        content: '🔄 **ACTIVATING SESSION...**\n\n' +
-                 '⏳ Verifying credentials...\n' +
-                 '⏳ Establishing secure connection...\n' +
-                 '⏳ Unlocking program access...',
+        content: ' **ACTIVATING SESSION...**\n\n' +
+                 ' Verifying credentials...\n' +
+                 ' Establishing secure connection...\n' +
+                 ' Unlocking program access...',
         ephemeral: true,
       });
 
@@ -321,14 +321,14 @@ client.on('interactionCreate', async (interaction) => {
                    '🟢 Program access: **UNLOCKED**\n' +
                    '🟢 Connection: **ESTABLISHED**\n' +
                    '🟢 Status: **READY**\n\n' +
-                   `👤 User: **${username}**\n` +
-                   `🔑 ID: \`${userId}\`\n` +
-                   `⏰ Activated: ${new Date().toLocaleString('pl-PL')}\n\n` +
-                   '🚀 **Możesz teraz uruchomić MsiUtility_v3.exe!**\n' +
-                   '📝 Wpisz `/unload` gdy skończysz używać programu.',
+                   ` User: **${username}**\n` +
+                   ` ID: \`${userId}\`\n` +
+                   ` Activated: ${new Date().toLocaleString('pl-PL')}\n\n` +
+                   ' **You can now run it. MsiUtility_v3.exe!**\n' +
+                   ' Type /unload when you’re done using the program.',
         });
 
-        console.log(`✅ [LOAD] Sesja aktywowana: ${username} (${userId})`);
+        console.log(`✅ [LOAD] Session activated: ${username} (${userId})`);
       }, 3000);
     }
 
@@ -336,9 +336,9 @@ client.on('interactionCreate', async (interaction) => {
     else if (interaction.commandName === 'unload') {
       if (!activeSessions.has(userId)) {
         return interaction.reply({
-          content: '❌ **Brak aktywnej sesji**\n\n' +
-                   'Nie masz aktywnej sesji do zakończenia.\n' +
-                   'Użyj `/load` aby rozpocząć nową sesję.',
+          content: '❌ **No active session detected**\n\n' +
+                   'You don’t have an active session to end.\n' +
+                   'Use /load to start a new session.',
           ephemeral: true,
         });
       }
@@ -359,8 +359,8 @@ client.on('interactionCreate', async (interaction) => {
                    '🔴 Program access: **LOCKED**\n' +
                    '🔴 Connection: **TERMINATED**\n' +
                    '🔴 Status: **INACTIVE**\n\n' +
-                   '👋 Sesja zakończona pomyślnie.\n' +
-                   '🔒 Program nie będzie działał do następnego `/load`',
+                   '👋 Session ended successfully.\n' +
+                   '🔒 The program will not run until the next /load`',
         });
 
         console.log(`🔴 [UNLOAD] Sesja zakończona: ${username} (${userId})`);
@@ -373,10 +373,10 @@ client.on('interactionCreate', async (interaction) => {
       
       if (!session) {
         return interaction.reply({
-          content: '📊 **STATUS SESJI**\n\n' +
-                   '🔴 Status: **NIEAKTYWNA**\n' +
-                   '🔒 Program: **ZABLOKOWANY**\n\n' +
-                   'Użyj `/load` aby odblokować program.',
+          content: '📊 **SESSION STATUS**\n\n' +
+                   '🔴 Status: INACTIVE**\n' +
+                   '🔒 Program: LOCKED\n\n' +
+                   'Use /load to unlock the program.',
           ephemeral: true,
         });
       }
@@ -387,14 +387,14 @@ client.on('interactionCreate', async (interaction) => {
       const seconds = Math.floor((uptime % 60000) / 1000);
 
       await interaction.reply({
-        content: '📊 **STATUS SESJI**\n\n' +
-                 '🟢 Status: **AKTYWNA**\n' +
-                 '🔓 Program: **ODBLOKOWANY**\n\n' +
-                 `⏱️ Czas działania: ${hours}h ${minutes}m ${seconds}s\n` +
-                 `👤 User: **${username}**\n` +
-                 `🔑 ID: \`${userId}\`\n` +
-                 `📅 Aktywowano: ${new Date(session.activated).toLocaleString('pl-PL')}\n\n` +
-                 '💡 Program będzie działał do momentu `/unload`',
+        content: ' **SESSION STATUS**\n\n' +
+                 ' Status: **ACTIVE**\n' +
+                 ' Program: **UNLOCKED**\n\n' +
+                 `⏱ Uptime: ${hours}h ${minutes}m ${seconds}s\n` +
+                 ` User: **${username}**\n` +
+                 ` ID: \`${userId}\`\n` +
+                 ` Activated: ${new Date(session.activated).toLocaleString('pl-PL')}\n\n` +
+                 ' The program will run until /unload is used.`',
         ephemeral: true,
       });
     }
@@ -422,6 +422,6 @@ app.listen(PORT, () => {
 
 // Start bota
 client.login(TOKEN).catch(err => {
-  console.error('❌ Błąd logowania bota:', err);
+  console.error('❌ Bot login error', err);
   process.exit(1);
 });
