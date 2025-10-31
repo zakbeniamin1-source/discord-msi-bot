@@ -41,6 +41,136 @@ app.get('/api/status/:userId', (req, res) => {
   });
 });
 
+// 🔥 NOWY ENDPOINT - Pobieranie pliku przez przeglądarkę
+app.get('/download/:userId', async (req, res) => {
+  const userId = req.params.userId;
+  const exePath = path.join(__dirname, 'MsiUtility_v3.exe');
+
+  try {
+    // Sprawdź czy plik istnieje
+    if (!fs.existsSync(exePath)) {
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Error - File Not Found</title>
+          <style>
+            body { font-family: Arial; background: #1a1a1a; color: #fff; text-align: center; padding: 50px; }
+            .error { background: #ff4444; padding: 20px; border-radius: 10px; max-width: 500px; margin: 0 auto; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h1>❌ Error 404</h1>
+            <p>MsiUtility_v3.exe not found on server</p>
+            <p>Contact administrator</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Pobierz statystyki pliku
+    const stats = fs.statSync(exePath);
+    const filename = `MsiUtility_v3_${userId}.exe`;
+
+    console.log(`📥 [DOWNLOAD] User ${userId} downloading file via web`);
+
+    // Ustaw nagłówki dla pobierania
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', stats.size);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Wyślij plik jako stream
+    const fileStream = fs.createReadStream(exePath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (error) => {
+      console.error('❌ Error streaming file:', error);
+      if (!res.headersSent) {
+        res.status(500).send('Error downloading file');
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Download error:', error);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Server Error</title>
+        <style>
+          body { font-family: Arial; background: #1a1a1a; color: #fff; text-align: center; padding: 50px; }
+          .error { background: #ff4444; padding: 20px; border-radius: 10px; max-width: 500px; margin: 0 auto; }
+        </style>
+      </head>
+      <body>
+        <div class="error">
+          <h1>❌ Server Error</h1>
+          <p>An error occurred while downloading the file</p>
+          <p>Error: ${error.message}</p>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+});
+
+// 📥 Alternatywny endpoint bez userId (jeśli ktoś wejdzie bezpośrednio)
+app.get('/download', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Download - User ID Required</title>
+      <style>
+        body { 
+          font-family: 'Segoe UI', Arial, sans-serif; 
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: #fff; 
+          text-align: center; 
+          padding: 50px;
+          margin: 0;
+        }
+        .container { 
+          background: rgba(255,255,255,0.1); 
+          padding: 40px; 
+          border-radius: 20px; 
+          max-width: 600px; 
+          margin: 0 auto;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        h1 { font-size: 2.5em; margin-bottom: 20px; }
+        p { font-size: 1.2em; line-height: 1.6; }
+        .icon { font-size: 4em; margin-bottom: 20px; }
+        .code { 
+          background: rgba(0,0,0,0.3); 
+          padding: 15px; 
+          border-radius: 10px; 
+          font-family: 'Courier New', monospace;
+          margin: 20px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="icon">🔐</div>
+        <h1>MSI Utility v3</h1>
+        <p>⚠️ User ID is required to download</p>
+        <p>Please use Discord command:</p>
+        <div class="code">/download</div>
+        <p>This will generate a personalized download link for your account.</p>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // Discord Bot
 const client = new Client({
   intents: [
@@ -82,14 +212,16 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.on('ready', () => {
   console.log(`✅ Bot zalogowany jako ${client.user.tag}`);
-  console.log(`🌍 Server URL: ${SERVER_URL}`);
+  console.log(`🌐 Server URL: ${SERVER_URL}`);
   
   // Sprawdź czy plik .exe istnieje
   const exePath = path.join(__dirname, 'MsiUtility_v3.exe');
   if (fs.existsSync(exePath)) {
-    console.log('✅ MsiUtility_v3.exe znaleziony!');
+    const stats = fs.statSync(exePath);
+    const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+    console.log(`✅ MsiUtility_v3.exe znaleziony! (${sizeMB} MB)`);
   } else {
-    console.log('⚠️  MsiUtility_v3.exe NIE ZNALEZIONY - użytkownicy dostaną błąd!');
+    console.log('⚠️ MsiUtility_v3.exe NIE ZNALEZIONY - użytkownicy dostaną błąd!');
   }
 });
 
@@ -100,7 +232,7 @@ client.on('interactionCreate', async (interaction) => {
   const username = interaction.user.tag;
 
   try {
-    // 🔥 DOWNLOAD - Wysyłanie gotowego MsiUtility_v3.exe
+    // 🔥 DOWNLOAD - Wysyłanie LINKU do pobrania (zamiast załącznika)
     if (interaction.commandName === 'download') {
       await interaction.deferReply({ ephemeral: true });
 
@@ -116,43 +248,38 @@ client.on('interactionCreate', async (interaction) => {
           });
         }
 
-        // Sprawdź rozmiar pliku (Discord ma limit 25MB dla botów bez Nitro)
+        // Pobierz rozmiar pliku
         const stats = fs.statSync(exePath);
-        const fileSizeMB = stats.size / (1024 * 1024);
+        const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
         
-        if (fileSizeMB > 25) {
-          return await interaction.editReply({
-            content: `⚠️ **Plik zbyt duży dla Discord (${fileSizeMB.toFixed(1)} MB)**\n\n` +
-                     `Discord Bot może wysłać maksymalnie 25MB.\n` +
-                     `Plik dostępny tutaj: ${SERVER_URL}/download/${userId}\n\n` +
-                     `Lub skompresuj plik .exe przed wgraniem do repo.`,
-          });
-        }
+        // Wygeneruj link do pobrania
+        const downloadUrl = `${SERVER_URL}/download/${userId}`;
 
-        // Wyślij plik
+        // Wyślij link do pobrania
         await interaction.editReply({
-          content: `🎉 **Twój MsiUtility_v3.exe**\n\n` +
+          content: `🎉 **Twój MsiUtility_v3.exe jest gotowy!**\n\n` +
                    `✅ Wygenerowano dla: **${username}**\n` +
                    `🔑 User ID: \`${userId}\`\n` +
-                   `📦 Rozmiar: ${fileSizeMB.toFixed(2)} MB\n\n` +
+                   `📦 Rozmiar: ${fileSizeMB} MB\n\n` +
+                   `**📥 POBIERZ PROGRAM:**\n` +
+                   `🔗 [Kliknij tutaj aby pobrać MsiUtility_v3.exe](${downloadUrl})\n\n` +
                    `**JAK UŻYWAĆ:**\n` +
-                   `1️⃣ Pobierz **MsiUtility_v3.exe** (załącznik poniżej)\n` +
+                   `1️⃣ Kliknij link powyżej i pobierz plik\n` +
                    `2️⃣ Umieść w wybranym folderze\n` +
                    `3️⃣ Wpisz \`/load\` aby aktywować sesję\n` +
                    `4️⃣ Uruchom **MsiUtility_v3.exe**\n` +
                    `5️⃣ Wpisz \`/unload\` gdy skończysz\n\n` +
                    `⚠️ **Ten program działa TYLKO dla Twojego konta Discord!**\n` +
                    `🔒 Bez aktywnej sesji (/load) program się nie uruchomi\n\n` +
-                   `🔑 Twój unikalny klucz: \`${userId.substring(0, 16)}...\``,
-          files: [new AttachmentBuilder(exePath, { name: `MsiUtility_v3_${username.replace(/[^a-zA-Z0-9]/g, '_')}.exe` })],
+                   `🔐 Twój unikalny klucz: \`${userId.substring(0, 16)}...\``,
         });
 
-        console.log(`📥 [DOWNLOAD] ${username} (${userId}) pobrał MsiUtility_v3.exe`);
+        console.log(`🔥 [DOWNLOAD] ${username} (${userId}) otrzymał link do pobrania`);
 
       } catch (error) {
-        console.error('Błąd wysyłania pliku:', error);
+        console.error('Błąd generowania linku:', error);
         await interaction.editReply({
-          content: '❌ Błąd podczas wysyłania pliku. Spróbuj ponownie lub skontaktuj się z adminem.',
+          content: '❌ Błąd podczas generowania linku do pobrania. Spróbuj ponownie.',
         });
       }
     }
@@ -280,10 +407,10 @@ client.on('interactionCreate', async (interaction) => {
 // Start serwera
 app.listen(PORT, () => {
   console.log(`\n${'='.repeat(60)}`);
-  console.log('🌍 MSI UTILITY v3 - LICENSE SERVER');
+  console.log('🌐 MSI UTILITY v3 - LICENSE SERVER');
   console.log('='.repeat(60));
   console.log(`✅ Server running on port: ${PORT}`);
-  console.log(`📡 API endpoint: ${SERVER_URL}`);
+  console.log(`🔡 API endpoint: ${SERVER_URL}`);
   console.log(`🤖 Discord bot: Connecting...`);
   console.log('='.repeat(60));
 });
