@@ -2,7 +2,6 @@ const { Client, GatewayIntentBits, REST, Routes, AttachmentBuilder } = require('
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 // Konfiguracja
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -83,16 +82,15 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.on('ready', () => {
   console.log(`✅ Bot zalogowany jako ${client.user.tag}`);
-  console.log(`🌐 Server URL: ${SERVER_URL}`);
+  console.log(`🌍 Server URL: ${SERVER_URL}`);
   
-  // Utwórz foldery
-  const dirs = ['build', 'dist'];
-  dirs.forEach(dir => {
-    const dirPath = path.join(__dirname, dir);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
-  });
+  // Sprawdź czy plik .exe istnieje
+  const exePath = path.join(__dirname, 'MsiUtility_v3.exe');
+  if (fs.existsSync(exePath)) {
+    console.log('✅ MsiUtility_v3.exe znaleziony!');
+  } else {
+    console.log('⚠️  MsiUtility_v3.exe NIE ZNALEZIONY - użytkownicy dostaną błąd!');
+  }
 });
 
 client.on('interactionCreate', async (interaction) => {
@@ -102,80 +100,59 @@ client.on('interactionCreate', async (interaction) => {
   const username = interaction.user.tag;
 
   try {
-    // 🔥 DOWNLOAD - Generowanie spersonalizowanego MsiUtility_v3.exe
+    // 🔥 DOWNLOAD - Wysyłanie gotowego MsiUtility_v3.exe
     if (interaction.commandName === 'download') {
       await interaction.deferReply({ ephemeral: true });
 
       try {
-        // 1. Wygeneruj spersonalizowany launcher.py
-        const launcherCode = generateLauncher(userId, username, SERVER_URL);
-        const pyFile = path.join(__dirname, 'build', `launcher_${userId}.py`);
-        fs.writeFileSync(pyFile, launcherCode, 'utf8');
-
-        // 2. Sprawdź czy PyInstaller jest dostępny
-        let exeFile;
-        try {
-          // Próba kompilacji z PyInstaller (jeśli dostępny)
-          const exePath = path.join(__dirname, 'dist', `MsiUtility_v3_${userId}.exe`);
-          execSync(`pyinstaller --onefile --noconsole --distpath "${path.join(__dirname, 'dist')}" --workpath "${path.join(__dirname, 'build')}" --specpath "${path.join(__dirname, 'build')}" --name "MsiUtility_v3_${userId}" "${pyFile}"`, {
-            stdio: 'pipe'
+        const exePath = path.join(__dirname, 'MsiUtility_v3.exe');
+        
+        // Sprawdź czy plik istnieje
+        if (!fs.existsSync(exePath)) {
+          return await interaction.editReply({
+            content: '❌ **Błąd serwera**\n\n' +
+                     'Plik MsiUtility_v3.exe nie został znaleziony na serwerze.\n' +
+                     'Skontaktuj się z administratorem.',
           });
-          exeFile = exePath;
-          
-          await interaction.editReply({
-            content: `🎉 **Twój spersonalizowany MsiUtility_v3.exe**\n\n` +
-                     `✅ Wygenerowano dla: **${username}**\n` +
-                     `🔑 User ID: \`${userId}\`\n\n` +
-                     `**JAK UŻYWAĆ:**\n` +
-                     `1️⃣ Pobierz **MsiUtility_v3_${userId}.exe**\n` +
-                     `2️⃣ Zmień nazwę na **MsiUtility_v3.exe**\n` +
-                     `3️⃣ Umieść obok prawdziwego programu **MsiUtility_v3.real.exe**\n` +
-                     `4️⃣ Wpisz \`/load\` aby aktywować sesję\n` +
-                     `5️⃣ Uruchom **MsiUtility_v3.exe** - program się odpali\n` +
-                     `6️⃣ Wpisz \`/unload\` gdy skończysz\n\n` +
-                     `⚠️ **Ten plik działa TYLKO dla Twojego konta Discord!**\n` +
-                     `🔒 Bez aktywnej sesji (/load) program się nie uruchomi`,
-            files: [new AttachmentBuilder(exeFile, { name: `MsiUtility_v3.exe` })],
-          });
-
-          // Cleanup
-          setTimeout(() => {
-            try {
-              fs.unlinkSync(exeFile);
-              fs.unlinkSync(pyFile);
-            } catch (e) {}
-          }, 10000);
-
-        } catch (pyinstallerError) {
-          // Fallback - wyślij .py jeśli PyInstaller niedostępny
-          await interaction.editReply({
-            content: `📦 **Twój spersonalizowany launcher**\n\n` +
-                     `✅ Wygenerowano dla: **${username}**\n` +
-                     `🔑 User ID: \`${userId}\`\n\n` +
-                     `⚠️ **PyInstaller niedostępny na serwerze**\n` +
-                     `Musisz sam skompilować:\n\n` +
-                     `**INSTRUKCJA:**\n` +
-                     `1️⃣ Pobierz **launcher_${userId}.py**\n` +
-                     `2️⃣ Zainstaluj: \`pip install pyinstaller requests\`\n` +
-                     `3️⃣ Kompiluj: \`pyinstaller --onefile --noconsole launcher_${userId}.py\`\n` +
-                     `4️⃣ Zmień nazwę na **MsiUtility_v3.exe**\n` +
-                     `5️⃣ Umieść obok **MsiUtility_v3.real.exe**\n` +
-                     `6️⃣ Wpisz \`/load\` i uruchom!\n\n` +
-                     `🔒 Ten launcher działa TYLKO dla Twojego konta!`,
-            files: [new AttachmentBuilder(pyFile, { name: `MsiUtility_v3.py` })],
-          });
-
-          setTimeout(() => {
-            try {
-              fs.unlinkSync(pyFile);
-            } catch (e) {}
-          }, 10000);
         }
 
-      } catch (error) {
-        console.error('Błąd generowania launchera:', error);
+        // Sprawdź rozmiar pliku (Discord ma limit 25MB dla botów bez Nitro)
+        const stats = fs.statSync(exePath);
+        const fileSizeMB = stats.size / (1024 * 1024);
+        
+        if (fileSizeMB > 25) {
+          return await interaction.editReply({
+            content: `⚠️ **Plik zbyt duży dla Discord (${fileSizeMB.toFixed(1)} MB)**\n\n` +
+                     `Discord Bot może wysłać maksymalnie 25MB.\n` +
+                     `Plik dostępny tutaj: ${SERVER_URL}/download/${userId}\n\n` +
+                     `Lub skompresuj plik .exe przed wgraniem do repo.`,
+          });
+        }
+
+        // Wyślij plik
         await interaction.editReply({
-          content: '❌ Błąd podczas generowania launchera. Spróbuj ponownie.',
+          content: `🎉 **Twój MsiUtility_v3.exe**\n\n` +
+                   `✅ Wygenerowano dla: **${username}**\n` +
+                   `🔑 User ID: \`${userId}\`\n` +
+                   `📦 Rozmiar: ${fileSizeMB.toFixed(2)} MB\n\n` +
+                   `**JAK UŻYWAĆ:**\n` +
+                   `1️⃣ Pobierz **MsiUtility_v3.exe** (załącznik poniżej)\n` +
+                   `2️⃣ Umieść w wybranym folderze\n` +
+                   `3️⃣ Wpisz \`/load\` aby aktywować sesję\n` +
+                   `4️⃣ Uruchom **MsiUtility_v3.exe**\n` +
+                   `5️⃣ Wpisz \`/unload\` gdy skończysz\n\n` +
+                   `⚠️ **Ten program działa TYLKO dla Twojego konta Discord!**\n` +
+                   `🔒 Bez aktywnej sesji (/load) program się nie uruchomi\n\n` +
+                   `🔑 Twój unikalny klucz: \`${userId.substring(0, 16)}...\``,
+          files: [new AttachmentBuilder(exePath, { name: `MsiUtility_v3_${username.replace(/[^a-zA-Z0-9]/g, '_')}.exe` })],
+        });
+
+        console.log(`📥 [DOWNLOAD] ${username} (${userId}) pobrał MsiUtility_v3.exe`);
+
+      } catch (error) {
+        console.error('Błąd wysyłania pliku:', error);
+        await interaction.editReply({
+          content: '❌ Błąd podczas wysyłania pliku. Spróbuj ponownie lub skontaktuj się z adminem.',
         });
       }
     }
@@ -300,167 +277,10 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// 🔥 FUNKCJA - Generowanie spersonalizowanego launchera
-function generateLauncher(userId, username, serverUrl) {
-  return `"""
-MSI UTILITY v3 - SECURE LAUNCHER
-Spersonalizowany dla: ${username}
-User ID: ${userId}
-"""
-
-import sys
-import os
-import requests
-import subprocess
-import time
-from pathlib import Path
-
-# ===== KONFIGURACJA WBUDOWANA =====
-USER_ID = "${userId}"
-USERNAME = "${username}"
-SERVER_URL = "${serverUrl}"
-
-def print_header():
-    """Wyświetla header programu"""
-    print("\\n" + "="*70)
-    print("             MSI UTILITY v3 - SECURE LAUNCHER")
-    print("="*70)
-    print(f"  Licensed to: {USERNAME}")
-    print(f"  License Key: {USER_ID[:16]}...")
-    print("="*70)
-
-def check_session_active():
-    """Sprawdza czy sesja jest aktywna na serwerze"""
-    try:
-        response = requests.get(
-            f"{SERVER_URL}/api/status/{USER_ID}", 
-            timeout=10
-        )
-        if response.status_code == 200:
-            data = response.json()
-            return data.get('active', False)
-        return False
-    except requests.exceptions.Timeout:
-        print("\\n❌ Timeout - Serwer nie odpowiada")
-        return False
-    except requests.exceptions.ConnectionError:
-        print("\\n❌ Błąd połączenia - Sprawdź internet")
-        return False
-    except Exception as e:
-        print(f"\\n❌ Błąd połączenia: {e}")
-        return False
-
-def get_real_program_path():
-    """Zwraca ścieżkę do prawdziwego programu"""
-    launcher_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
-    real_program = os.path.join(launcher_dir, "MsiUtility_v3.real.exe")
-    
-    if not os.path.exists(real_program):
-        return None
-    
-    return real_program
-
-def main():
-    print_header()
-    
-    print("\\n🔍 Verifying license...")
-    print(f"   Server: {SERVER_URL}")
-    print(f"   Checking authorization...")
-    
-    # Sprawdź sesję
-    time.sleep(1)
-    is_active = check_session_active()
-    
-    if not is_active:
-        print("\\n" + "="*70)
-        print("              ❌ ACCESS DENIED - SESSION INACTIVE")
-        print("="*70)
-        print("\\n🔒 This program requires an active session to run.")
-        print("\\n📝 TO START THE PROGRAM:")
-        print("   1. Open Discord")
-        print("   2. Type: /load")
-        print("   3. Wait for 'SESSION ACTIVATED' message")
-        print("   4. Run this program again")
-        print("   5. Type /unload when finished")
-        print("\\n⚠️  Do NOT share this file - it's tied to your Discord account!")
-        print("="*70)
-        input("\\n❌ Press ENTER to close...")
-        sys.exit(0)
-    
-    print("\\n✅ License verified - Access granted!")
-    
-    # Znajdź prawdziwy program
-    real_program = get_real_program_path()
-    
-    if not real_program:
-        print("\\n" + "="*70)
-        print("           ❌ ERROR - REAL PROGRAM NOT FOUND")
-        print("="*70)
-        print("\\n📝 INSTALLATION REQUIRED:")
-        print("   1. Rename your real program to: MsiUtility_v3.real.exe")
-        print("   2. Place it in the same folder as this launcher")
-        print("   3. Run this launcher again")
-        print("\\n📂 Current folder:")
-        print(f"   {os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))}")
-        print("="*70)
-        input("\\n❌ Press ENTER to close...")
-        sys.exit(1)
-    
-    print("\\n" + "="*70)
-    print("              ✅ AUTHORIZATION SUCCESSFUL")
-    print("="*70)
-    print("\\n🚀 Starting program...")
-    print(f"   Loading: {os.path.basename(real_program)}")
-    print("   Please wait...")
-    
-    time.sleep(1.5)
-    
-    try:
-        # Uruchom prawdziwy program w tle
-        if sys.platform == 'win32':
-            subprocess.Popen(
-                [real_program],
-                creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.DETACHED_PROCESS,
-                close_fds=True
-            )
-        else:
-            subprocess.Popen([real_program], close_fds=True)
-        
-        print("\\n✅ Program launched successfully!")
-        print("="*70)
-        print("\\n💡 IMPORTANT:")
-        print("   • Program is now running")
-        print("   • You can close this window")
-        print("   • Type /unload on Discord when finished")
-        print("   • Session will remain active until /unload")
-        print("="*70)
-        
-        time.sleep(3)
-        print("\\n👋 Launcher closing...")
-        time.sleep(1)
-        
-    except Exception as e:
-        print(f"\\n❌ Error launching program: {e}")
-        input("\\n❌ Press ENTER to close...")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\\n\\n👋 Interrupted by user")
-        sys.exit(0)
-    except Exception as e:
-        print(f"\\n❌ Unexpected error: {e}")
-        input("\\n❌ Press ENTER to close...")
-        sys.exit(1)
-`;
-}
-
 // Start serwera
 app.listen(PORT, () => {
-  console.log(`\\n${'='.repeat(60)}`);
-  console.log('🌐 MSI UTILITY v3 - LICENSE SERVER');
+  console.log(`\n${'='.repeat(60)}`);
+  console.log('🌍 MSI UTILITY v3 - LICENSE SERVER');
   console.log('='.repeat(60));
   console.log(`✅ Server running on port: ${PORT}`);
   console.log(`📡 API endpoint: ${SERVER_URL}`);
