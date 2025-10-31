@@ -29,15 +29,20 @@ app.get('/', (req, res) => {
   res.send('🟢 Bot działa! Aktywnych sesji: ' + activeSessions.size);
 });
 
-// ✅ API - Sprawdzanie statusu sesji
+// ✅ API - Sprawdzanie statusu sesji (NAPRAWIONY)
 app.get('/api/status/:userId', (req, res) => {
   const userId = req.params.userId;
   const session = activeSessions.get(userId);
   
+  // Log dla debugowania
+  console.log(`📊 [API] Status check for user ${userId}: ${activeSessions.has(userId) ? 'ACTIVE' : 'INACTIVE'}`);
+  
+  // WAŻNE: Odpowiedź musi zawierać poprawny status
   res.json({ 
     active: activeSessions.has(userId),
     userId: userId,
-    session: session || null
+    session: session || null,
+    timestamp: Date.now()
   });
 });
 
