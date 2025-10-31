@@ -8,7 +8,7 @@ import hashlib
 from pathlib import Path
 
 # Konfiguracja - ZMIEŃ NA SWÓJ URL RAILWAY
-SERVER_URL = "https://twoja-aplikacja.railway.app"  # ZMIEŃ TO!
+SERVER_URL = "https://api.render.com/deploy/srv-d42cohruibrs73csmi5g?key=kuqqz9wAX9s"  # ZMIEŃ TO!
 
 def get_hwid():
     """Generuje unikalny ID komputera"""
